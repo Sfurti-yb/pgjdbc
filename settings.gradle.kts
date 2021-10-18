@@ -2,6 +2,8 @@
  * Copyright (c) 2019, PostgreSQL Global Development Group
  * See the LICENSE file in the project root for more information.
  */
+/* TODO Yugabyte copyright */
+ 
 
 pluginManagement {
     plugins {
@@ -31,7 +33,7 @@ if (JavaVersion.current() < JavaVersion.VERSION_17) {
 
 // This is the name of a current project
 // Note: it cannot be inferred from the directory name as developer might clone pgjdbc to pgjdbc_tmp (or whatever) folder
-rootProject.name = "pgjdbc"
+rootProject.name = "jdbc-yugabytedb"
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 

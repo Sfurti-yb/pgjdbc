@@ -117,7 +117,7 @@ public class DataSourceFactoryTest {
   private static String getUrl() {
     Properties p = loadPropertyFiles("build.properties");
 
-    return "jdbc:postgresql://"
+    return "jdbc:yugabytedb://"
         + p.get("test.url.PGHOST") + ":"
         + p.get("test.url.PGPORT") + "/"
         + p.get("test.url.PGDBNAME")
