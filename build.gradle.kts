@@ -2,6 +2,7 @@
  * Copyright (c) 2019, PostgreSQL Global Development Group
  * See the LICENSE file in the project root for more information.
  */
+ 
 
 plugins {
     id("build-logic.repositories")
@@ -30,9 +31,9 @@ ide {
 
 val String.v: String get() = rootProject.extra["$this.version"] as String
 
-val buildVersion = "pgjdbc".v + if (buildParameters.release) "" else "-SNAPSHOT"
+val buildVersion = "pgjdbc".v + releaseParams.snapshotSuffix
 
-println("Building pgjdbc $buildVersion")
+println("Building jdbc-yugabytedb $buildVersion")
 
 val isReleaseVersion = buildParameters.release
 
@@ -61,8 +62,29 @@ val jacocoReport by tasks.registering(JacocoReport::class) {
     }
 }
 
+releaseParams {
+    tlp.set("yugabyte")
+    organizationName.set("yugabyte")
+    componentName.set("jdbc-yugabytedb")
+    prefixForProperties.set("gh")
+    svnDistEnabled.set(false)
+    sitePreviewEnabled.set(false)
+    releaseTag.set("REL$buildVersion")
+    nexus {
+        mavenCentral()
+    }
+    voteText.set {
+        """
+        ${it.componentName} v${it.version}-rc${it.rc} is ready for preview.
+
+        Git SHA: ${it.gitSha}
+        Staging repository: ${it.nexusRepositoryUri}
+        """.trimIndent()
+    }
+}
+
 allprojects {
-    group = "org.postgresql"
+    group = "com.yugabyte"
     version = buildVersion
 }
 

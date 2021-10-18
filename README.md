@@ -1,95 +1,92 @@
-<img height="90" alt="Slonik Duke" align="right" src="docs/static/images/slonik_duke.png" />
+# YugabyteDB JDBC Driver
+This is a distributed JDBC driver for YugabyteDB SQL. This driver is based on the [PostgreSQL JDBC Driver](https://github.com/pgjdbc/pgjdbc).
 
-# PostgreSQL JDBC Driver
+## Features
 
-PostgreSQL JDBC Driver (PgJDBC for short) allows Java programs to connect to a PostgreSQL database using standard, database independent Java code. Is an open source JDBC driver written in Pure Java (Type 4), and communicates in the PostgreSQL native network protocol.
+This JDBC driver has the following features:
+
+### Cluster Awareness to eliminate need for a load balancer
+
+This driver adds a `YBClusterAwareDataSource` that requires only an initial _contact point_ for the YugabyteDB cluster, using which it discovers the rest of the nodes. Additionally, it automatically learns about the nodes being started/added or stopped/removed. Internally the driver keeps track of number of connections it has created to each server endpoint and every new connection request is connected to the least loaded server as per the driver's view.
+
+### Topology Awareness to enable geo-distributed apps
+
+This is similar to 'Cluster Awareness' but uses those servers which are part of a given set of geo-locations specified by _topology-keys_.
+
+### Shard awareness for high performance
+
+> **NOTE:** This feature is still in the design phase.
+
+### Connection Properties added for load balancing
+
+- _load-balance_   - It takes 'true' or 'false' as valid values. By default it is 'false' for now.
+- _topology-keys_  - It takes a comma separated geo-location values. The geo-location can be given as 'cloud:region:zone'.
+
+Please refer to the [Use the Driver](#Use the Driver) section for examples.
 
 ### Status
-[![GitHub CI](https://github.com/pgjdbc/pgjdbc/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/pgjdbc/pgjdbc/actions/workflows/main.yml)
-[![Build status](https://ci.appveyor.com/api/projects/status/d8ucmegnmourohwu/branch/master?svg=true)](https://ci.appveyor.com/project/davecramer/pgjdbc/branch/master)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/pgjdbc/pgjdbc/badge)](https://scorecard.dev/viewer/?uri=github.com/pgjdbc/pgjdbc)
-[![codecov.io](http://codecov.io/github/pgjdbc/pgjdbc/coverage.svg?branch=master)](http://codecov.io/github/pgjdbc/pgjdbc?branch=master)
 [![License](https://img.shields.io/badge/License-BSD--2--Clause-blue.svg)](https://opensource.org/licenses/BSD-2-Clause)
-[![Join the chat at https://gitter.im/pgjdbc/pgjdbc](https://badges.gitter.im/pgjdbc/pgjdbc.svg)](https://gitter.im/pgjdbc/pgjdbc?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-[![Maven Central](https://img.shields.io/maven-central/v/org.postgresql/postgresql)](https://maven-badges.herokuapp.com/maven-central/org.postgresql/postgresql)
-[![Javadocs](http://javadoc.io/badge/org.postgresql/postgresql.svg)](http://javadoc.io/doc/org.postgresql/postgresql)
-
-## Supported PostgreSQL and Java versions
-The current version of the driver should be compatible with **PostgreSQL 8.4 and higher** using the version 3.0 of the protocol and **Java 8** (JDBC 4.2) or above. Unless you have unusual requirements (running old applications or JVMs), this is the driver you should be using.
-
-PgJDBC regression tests are run against all PostgreSQL versions since 9.1, including "build PostgreSQL from git master" version. There are other derived forks of PostgreSQL but they have not been certified to run with PgJDBC. If you find a bug or regression on supported versions, please file an [Issue](https://github.com/pgjdbc/pgjdbc/issues).
+[![Maven Central](https://img.shields.io/maven-central/v/com.yugabyte/jdbc-yugabytedb)](https://central.sonatype.com/artifact/com.yugabyte/jdbc-yugabytedb)
 
 > **Note:** PgJDBC versions since 42.8.0 are not guaranteed to work with PostgreSQL older than 9.1.
 
 ## Get the Driver
-Most people do not need to compile PgJDBC. You can download the precompiled driver (jar) from the [PostgreSQL JDBC site](https://jdbc.postgresql.org/download/) or using your chosen dependency management tool:
 
-### Maven Central
-You can search on The Central Repository with GroupId and ArtifactId [org.postgresql:postgresql][mvn-search].
+### From Maven
 
-[![Maven Central](https://img.shields.io/maven-central/v/org.postgresql/postgresql)](https://central.sonatype.com/artifact/org.postgresql/postgresql)
-
-```xml
-<!-- Add the following dependency to your pom.xml, -->
-<!-- replacing LATEST with specific version as required -->
-
+Either add the following lines to your maven project in pom.xml file.
+```
 <dependency>
-  <groupId>org.postgresql</groupId>
-  <artifactId>postgresql</artifactId>
-  <version>LATEST</version>
+  <groupId>com.yugabyte</groupId>
+  <artifactId>jdbc-yugabytedb</artifactId>
+  <version>42.3.0-yb-beta.1</version>
 </dependency>
 ```
 
-[mvn-search]: https://central.sonatype.com/artifact/org.postgresql/postgresql "Search on Maven Central"
+or you can visit to this link for the latest version of dependency: https://search.maven.org/artifact/com.yugabyte/jdbc-yugabytedb
 
-#### Development snapshots
-Snapshot builds (builds from `master` branch) are also deployed to OSS Sonatype Snapshot Repository, so you can test current development version (test some bugfix) by enabling the repository and using the latest [SNAPSHOT](https://oss.sonatype.org/content/repositories/snapshots/org/postgresql/postgresql/) version.
+[mvn-search]: https://central.sonatype.com/artifact/com.yugabyte/jdbc-yugabytedb "Search on Maven Central"
 
-There are also available (snapshot) binary RPMs in [Fedora's Copr repository](https://copr.fedorainfracloud.org/coprs/g/pgjdbc/pgjdbc-travis/).
+### Build locally
 
-----------------------------------------------------
-## Documentation
-For more information you can read [the PgJDBC driver documentation](https://jdbc.postgresql.org/documentation/) or for general JDBC documentation please refer to [The Java™ Tutorials](http://docs.oracle.com/javase/tutorial/jdbc/).
+0. Build environment
 
-### Driver and DataSource class
+   gpgsuite needs to be present on the machine where build is performed.
+   ```
+   https://gpgtools.org/
+   ```
+   Please install gpg and create a key.
 
-| Implements                          | Class                                          |
-| ----------------------------------- | ---------------------------------------------- |
-| java.sql.Driver                     | **org.postgresql.Driver**                      |
-| javax.sql.DataSource                | org.postgresql.ds.PGSimpleDataSource           |
-| javax.sql.ConnectionPoolDataSource  | org.postgresql.ds.PGConnectionPoolDataSource   |
-| javax.sql.XADataSource              | org.postgresql.xa.PGXADataSource               |
+1. Clone this repository.
 
-### Building the Connection URL
-The driver recognises JDBC URLs of the form:
-```
-jdbc:postgresql:database
-jdbc:postgresql:
-jdbc:postgresql://host/database
-jdbc:postgresql://host/
-jdbc:postgresql://host:port/database
-jdbc:postgresql://host:port/
-jdbc:postgresql://?service=myservice
-```
-The general format for a JDBC URL for connecting to a PostgreSQL server is as follows, with items in square brackets ([ ]) being optional:
-```
-jdbc:postgresql:[//host[:port]/][database][?property1=value1[&property2=value2]...]
-```
-where:
- * **jdbc:postgresql:** (Required) is known as the sub-protocol and is constant.
- * **host** (Optional) is the server address to connect. This could be a DNS or IP address, or it could be *localhost* or *127.0.0.1* for the local computer. To specify an IPv6 address your must enclose the host parameter with square brackets (jdbc:postgresql://[::1]:5740/accounting). Defaults to `localhost`.
- * **port** (Optional) is the port number listening on the host. Defaults to `5432`.
- * **database** (Optional) is the database name. Defaults to the same name as the *user name* used in the connection.
- * **propertyX** (Optional) is one or more option connection properties. For more information see *Connection properties*.
+    ```
+    git clone https://github.com/yugabyte/pgjdbc.git && cd pgjdbc
+    ```
+2. Checkout the 'yugabyte' branch.
 
-### Logging
-PgJDBC uses java.util.logging for logging.
-To configure log levels and control log output destination (e.g. file or console), configure your java.util.logging properties accordingly for the org.postgresql logger.
-Note that the most detailed log levels, "`FINEST`", may include sensitive information such as connection details, query SQL, or command parameters.
+    ```
+     git checkout yugabyte
+    ```
 
-#### Connection Properties
-In addition to the standard connection parameters the driver supports a number of additional properties which can be used to specify additional driver behaviour specific to PostgreSQL™. These properties may be specified in either the connection URL or an additional Properties object parameter to DriverManager.getConnection.
+3. Build and install into your local maven folder.
+
+    ```
+     ./gradlew publishToMavenLocal -x test -x checkstyleMain
+    ```
+
+4. Finally, use it by adding the lines below to your project.
+
+    ```xml
+    <dependency>
+        <groupId>com.yugabyte</groupId>
+        <artifactId>jdbc-yugabytedb</artifactId>
+        <version>42.3.1-SNAPSHOT</version>
+    </dependency> 
+    ```
+####Note: You need to have installed 2.7.2.0-b0 or above version of YugabyteDB on your system for load balancing to work.
+
+## Connection Properties
 
 | Property                      | Type |         Default         | Description                                                                                                                                                                                                                                                                                                                                     |
 |-------------------------------| -- |:-----------------------:|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -163,15 +160,61 @@ In addition to the standard connection parameters the driver supports a number o
 | stringtype                    | String |          null           | Specify the type to use when binding `PreparedStatement` parameters set via `setString()`                                                                                                                                                                                                                                                     |
 | channelBinding                 | String |   prefer    | This option controls the client's use of channel binding. `require` means that the connection must employ channel binding, `prefer` means that the client will choose channel binding if available, and `disable` prevents the use of channel binding.                                                                                                   |
 
-#### System Properties
-| Property                      | Type |         Default         | Description                                                                                                                                                                                                                                                                                                                                     |
-|-------------------------------| -- |:-----------------------:|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------    |
-| pgjdbc.config.cleanup.thread.ttl | long | 30000 |  The driver has an internal cleanup thread which monitors and cleans up unclosed connections. This property sets the duration (in milliseconds) the cleanup thread will keep running if there is nothing to clean up. |
+## Use the Driver
 
-## Contributing
-For information on how to contribute to the project see the [Contributing Guidelines](CONTRIBUTING.md)
+- Passing new connection properties for load balancing in connection url or properties bag
 
-----------------------------------------------------
-### Sponsors
+  For uniform load balancing across all the server you just need to specify the _load-balance=true_ property in the url.
+    ```
+    String yburl = "jdbc:yugabytedb://127.0.0.1:5433/yugabyte?user=yugabyte&password=yugabyte&load-balance=true";
+    DriverManager.getConnection(yburl);
+    ```
 
-* [PostgreSQL International](http://www.postgresintl.com)
+  For specifying topology keys you need to set the additional property with a valid comma separated value, for example _topology-keys=region1.zone1,region1.zone2_.
+
+    ```
+    String yburl = "jdbc:yugabytedb://127.0.0.1:5433/yugabyte?user=yugabyte&password=yugabyte&load-balance=true&topology-keys=region1.zone1,region1.zone2";
+    DriverManager.getConnection(yburl);
+    ```
+
+- Create and setup the DataSource for uniform load balancing
+  A datasource for Yugabyte has been added. It can be configured like this for load balancing behaviour.
+    ```
+    String jdbcUrl = "jdbc:yugabytedb://127.0.0.1:5433/yugabyte";
+    YBClusterAwareDataSource ds = new YBClusterAwareDataSource();
+    ds.setUrl(jdbcUrl);
+    // If topology aware distribution to be enabled then
+    ds.setTopologyKeys("cloud1.region1.zone1,cloud1.region2.zone2");
+    // If you want to provide more endpoints to safeguard against even first connection failure due
+    to the possible unavailability of initial contact point.
+    ds.setAdditionalEndpoints("127.0.0.2:5433,127.0.0.3:5433");
+
+    Connection conn = ds.getConnection();
+    ```
+
+- Create and setup the DataSource with a popular pooling solution like Hikari
+
+    ```
+    Properties poolProperties = new Properties();
+    poolProperties.setProperty("dataSourceClassName", "com.yugabyte.ysql.YBClusterAwareDataSource");
+    poolProperties.setProperty("maximumPoolSize", 10);
+    poolProperties.setProperty("dataSource.serverName", "127.0.0.1");
+    poolProperties.setProperty("dataSource.portNumber", "5433");
+    poolProperties.setProperty("dataSource.databaseName", "yugabyte");
+    poolProperties.setProperty("dataSource.user", "yugabyte");
+    poolProperties.setProperty("dataSource.password", "yugabyte");
+    // If you want to provide additional end points
+    String additionalEndpoints = "127.0.0.2:5433,127.0.0.3:5433,127.0.0.4:5433,127.0.0.5:5433";
+    poolProperties.setProperty("dataSource.additionalEndpoints", additionalEndpoints);
+    // If you want to load balance between specific geo locations using topology keys
+    String geoLocations = "region1.zone1,region2.zone2";
+    poolProperties.setProperty("dataSource.topologyKeys", geoLocations);
+
+    poolProperties.setProperty("poolName", name);
+
+    HikariConfig config = new HikariConfig(poolProperties);
+    config.validate();
+    HikariDataSource ds = new HikariDataSource(config);
+
+    Connection conn = ds.getConnection();
+    ```

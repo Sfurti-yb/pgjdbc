@@ -116,7 +116,7 @@ public class TestUtil {
     String host = getTestUrlProperty(props, PGProperty.PG_HOST);
     String port = getTestUrlProperty(props, PGProperty.PG_PORT);
     String database = getTestUrlProperty(props, PGProperty.PG_DBNAME);
-    StringBuilder sb = new StringBuilder("jdbc:postgresql://");
+    StringBuilder sb = new StringBuilder("jdbc:yugabytedb://");
     sb.append(host).append(":").append(port).append("/").append(database);
     sb.append("?ApplicationName=Driver Tests");
     for (String propertyName : props.stringPropertyNames()) {
