@@ -2,6 +2,7 @@
  * Copyright (c) 2019, PostgreSQL Global Development Group
  * See the LICENSE file in the project root for more information.
  */
+ 
 
 plugins {
     id("build-logic.repositories")
@@ -32,7 +33,7 @@ val String.v: String get() = rootProject.extra["$this.version"] as String
 
 val buildVersion = "pgjdbc".v + if (buildParameters.release) "" else "-SNAPSHOT"
 
-println("Building pgjdbc $buildVersion")
+println("Building jdbc-yugabytedb $buildVersion")
 
 val isReleaseVersion = buildParameters.release
 
@@ -62,7 +63,7 @@ val jacocoReport by tasks.registering(JacocoReport::class) {
 }
 
 allprojects {
-    group = "org.postgresql"
+    group = "com.yugabyte"
     version = buildVersion
 }
 
