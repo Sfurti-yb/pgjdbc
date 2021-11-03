@@ -19,7 +19,7 @@ This is similar to 'Cluster Awareness' but uses those servers which are part of 
 
 ### Connection Properties added for load balancing
 
-- _load-balance_   - It takes 'true' or 'false' as valid values. By default it is 'false' for now.
+- _load-balance_   - It takes 'true' or 'false' as valid values. By default it is 'true' for YBClusterAwareDataSource but in case of DriverManager.getConnection() API it needs to be set 'true' because default it is 'false'.
 - _topology-keys_  - It takes a comma separated geo-location values. The geo-location can be given as 'cloud:region:zone'.
 
 Please refer to the [Use the Driver](#Use the Driver) section for examples.
@@ -33,7 +33,7 @@ Either add the following lines to your maven project in pom.xml file.
 <dependency>
   <groupId>com.yugabyte</groupId>
   <artifactId>jdbc-yugabytedb</artifactId>
-  <version>42.3.0-yb-beta.1</version>
+  <version>42.3.0</version>
 </dependency>
 ```
 
@@ -54,19 +54,19 @@ or you can visit to this link for the latest version of dependency: https://sear
     ```
     git clone https://github.com/yugabyte/pgjdbc.git && cd pgjdbc
     ```
-2. Checkout the 'yugabyte' branch.
 
-    ```
-     git checkout yugabyte
-    ```
-
-3. Build and install into your local maven folder.
+2. Build and install into your local maven folder.
 
     ```
      ./gradlew publishToMavenLocal -x test -x checkstyleMain
     ```
 
-4. Finally, use it by adding the lines below to your project.
+#### Connection Properties
+In addition to the standard connection parameters the driver supports a number of additional properties which can be used to specify additional driver behaviour specific to PostgreSQL™. These properties may be specified in either the connection URL or an additional Properties object parameter to DriverManager.getConnection.
+
+| Property                      | Type |         Default         | Description                                                                                                                                                                                                                                                                                                                                     |
+|-------------------------------| -- |:-----------------------:|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| user                          | String |          null           | The database user on whose behalf the connection is being made.                                                                                                                                                                                                                                                                               |
 | password                      | String |          null           | The database user's password.                                                                                                                                                                                                                                                                                                                 |
 | options                       | String |          null           | Specify 'options' connection initialization parameter.                                                                                                                                                                                                                                                                                        |
 | service                       | String |          null           | Specify 'service' name described in pg_service.conf file. References: [The Connection Service File](https://www.postgresql.org/docs/current/libpq-pgservice.html) and [The Password File](https://www.postgresql.org/docs/current/libpq-pgpass.html). 'service' file can provide all properties including 'hostname=', 'port=' and 'dbname='. |
@@ -135,6 +135,8 @@ or you can visit to this link for the latest version of dependency: https://sear
 | unknownLength                 | Integer |   Integer.MAX_LENGTH    | Specifies the length to return for types of unknown length                                                                                                                                                                                                                                                                                   |
 | stringtype                    | String |          null           | Specify the type to use when binding `PreparedStatement` parameters set via `setString()`                                                                                                                                                                                                                                                     |
 | channelBinding                 | String |   prefer    | This option controls the client's use of channel binding. `require` means that the connection must employ channel binding, `prefer` means that the client will choose channel binding if available, and `disable` prevents the use of channel binding.                                                                                                   |
+
+4. Finally, use it by adding the lines below to your project.
 
     ```xml
     <dependency>
