@@ -31,7 +31,9 @@ ide {
 
 val String.v: String get() = rootProject.extra["$this.version"] as String
 
-val buildVersion = "pgjdbc".v + if (buildParameters.release) "" else "-SNAPSHOT"
+// val buildVersion = "jdbc-yugabytedb".v + releaseParams.snapshotSuffix
+// val buildVersion = "pgjdbc".v + releaseParams.snapshotSuffix
+val buildVersion = "pgjdbc".v
 
 println("Building jdbc-yugabytedb $buildVersion")
 
