@@ -1475,8 +1475,11 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       return ((BaseStatement) createMetaDataStatement()).createDriverResultSet(f, v);
     }
 
-    StringBuilder select = new StringBuilder(
-        "SELECT current_database() AS \"TABLE_CAT\", n.nspname AS \"TABLE_SCHEM\", c.relname AS \"TABLE_NAME\", "
+    StringBuilder select = new StringBuilder();
+    if (connection.getYbPgDatabaseMetaDataHintString() != null) {
+      select.append("/*+").append(connection.getYbPgDatabaseMetaDataHintString()).append("*/ ");
+    }
+    select.append("SELECT current_database() AS \"TABLE_CAT\", n.nspname AS \"TABLE_SCHEM\", c.relname AS \"TABLE_NAME\", "
              + " CASE n.nspname ~ '^pg_' OR n.nspname = 'information_schema' "
              + " WHEN true THEN CASE "
              + " WHEN n.nspname = 'pg_catalog' OR n.nspname = 'information_schema' THEN CASE c.relkind "
@@ -1754,6 +1757,9 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
     // function as possible (schema/table names), but must leave
     // column name outside so we correctly count the other columns.
     //
+    if (connection.getYbPgDatabaseMetaDataHintString() != null) {
+      sql.append("/*+").append(connection.getYbPgDatabaseMetaDataHintString()).append("*/ ");
+    }
     if (connection.haveMinimumServerVersion(ServerVersion.v8_4)) {
       sql.append("SELECT * FROM (");
     } else {
