@@ -246,6 +246,7 @@ public class PgConnection implements BaseConnection {
   private final LruCache<FieldMetadata.Key, FieldMetadata> fieldMetadataCache;
 
   private ClusterAwareLoadBalancer loadBalancer;
+  private String ybPgDatabaseMetaDataHintString;
 
   private final @Nullable String xmlFactoryFactoryClass;
   private @Nullable PGXmlFactoryFactory xmlFactoryFactory;
@@ -433,6 +434,8 @@ public class PgConnection implements BaseConnection {
 
       xmlFactoryFactoryClass = PGProperty.XML_FACTORY_FACTORY.getOrDefault(info);
       cleanable = LazyCleanerImpl.getInstance().register(leakHandle, finalizeAction);
+      String hint = System.getProperty("yugabytedb.pgdatabasemetadata.hint");
+      ybPgDatabaseMetaDataHintString = (hint != null && !hint.trim().isEmpty()) ? hint.trim() : null;
     } catch (SQLException | RuntimeException | Error e) {
       // close() is idempotent (QueryExecutorBase.close checks isClosed), so this is a safe no-op
       // if a setup step already closed the executor.
@@ -937,6 +940,10 @@ public class PgConnection implements BaseConnection {
 
   public void setLoadBalancer(ClusterAwareLoadBalancer lb) {
     this.loadBalancer = lb;
+  }
+
+  public String getYbPgDatabaseMetaDataHintString() {
+    return ybPgDatabaseMetaDataHintString;
   }
 
   @Override
