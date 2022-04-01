@@ -434,7 +434,7 @@ public class PgConnection implements BaseConnection {
 
       xmlFactoryFactoryClass = PGProperty.XML_FACTORY_FACTORY.getOrDefault(info);
       cleanable = LazyCleanerImpl.getInstance().register(leakHandle, finalizeAction);
-      disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestloop.disable"));
+      disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestedloop.disable"));
     } catch (SQLException | RuntimeException | Error e) {
       // close() is idempotent (QueryExecutorBase.close checks isClosed), so this is a safe no-op
       // if a setup step already closed the executor.
@@ -445,6 +445,20 @@ public class PgConnection implements BaseConnection {
       }
       throw e;
     }
+<<<<<<< HEAD
+=======
+
+    fieldMetadataCache = new LruCache<>(
+        Math.max(0, PGProperty.DATABASE_METADATA_CACHE_FIELDS.getInt(info)),
+        Math.max(0, PGProperty.DATABASE_METADATA_CACHE_FIELDS_MIB.getInt(info) * 1024L * 1024L),
+        false);
+
+    replicationConnection = PGProperty.REPLICATION.getOrDefault(info) != null;
+
+    xmlFactoryFactoryClass = PGProperty.XML_FACTORY_FACTORY.getOrDefault(info);
+    cleanable = LazyCleaner.getInstance().register(leakHandle, finalizeAction);
+    disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestedloop.disable"));
+>>>>>>> dcdd5419 (Update name of system property)
   }
 
   private static ReadOnlyBehavior getReadOnlyBehavior(@Nullable String property) {
