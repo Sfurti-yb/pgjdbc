@@ -436,7 +436,7 @@ public class PgConnection implements BaseConnection {
       cleanable = LazyCleanerImpl.getInstance().register(leakHandle, finalizeAction);
       String hint = System.getProperty("yugabytedb.pgdatabasemetadata.hint");
       ybPgDatabaseMetaDataHintString = (hint != null && !hint.trim().isEmpty()) ? hint.trim() : null;
-      disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestloop.disable"));
+      disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestedloop.disable"));
     } catch (SQLException | RuntimeException | Error e) {
       // close() is idempotent (QueryExecutorBase.close checks isClosed), so this is a safe no-op
       // if a setup step already closed the executor.
