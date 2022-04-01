@@ -246,7 +246,7 @@ public class PgConnection implements BaseConnection {
   private final LruCache<FieldMetadata.Key, FieldMetadata> fieldMetadataCache;
 
   private ClusterAwareLoadBalancer loadBalancer;
-  private String ybPgDatabaseMetaDataHintString;
+  private boolean disableNestLoopForMetadataSQLs;
 
   private final @Nullable String xmlFactoryFactoryClass;
   private @Nullable PGXmlFactoryFactory xmlFactoryFactory;
@@ -434,8 +434,7 @@ public class PgConnection implements BaseConnection {
 
       xmlFactoryFactoryClass = PGProperty.XML_FACTORY_FACTORY.getOrDefault(info);
       cleanable = LazyCleanerImpl.getInstance().register(leakHandle, finalizeAction);
-      String hint = System.getProperty("yugabytedb.pgdatabasemetadata.hint");
-      ybPgDatabaseMetaDataHintString = (hint != null && !hint.trim().isEmpty()) ? hint.trim() : null;
+      disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestloop.disable"));
     } catch (SQLException | RuntimeException | Error e) {
       // close() is idempotent (QueryExecutorBase.close checks isClosed), so this is a safe no-op
       // if a setup step already closed the executor.
@@ -942,8 +941,8 @@ public class PgConnection implements BaseConnection {
     this.loadBalancer = lb;
   }
 
-  public String getYbPgDatabaseMetaDataHintString() {
-    return ybPgDatabaseMetaDataHintString;
+  public boolean getDisableNestLoopForMetadataSQLs() {
+    return disableNestLoopForMetadataSQLs;
   }
 
   @Override
