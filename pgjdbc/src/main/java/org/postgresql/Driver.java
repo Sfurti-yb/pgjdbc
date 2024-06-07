@@ -30,7 +30,6 @@ import org.postgresql.jdbcurlresolver.PgServiceConfParser;
 import org.postgresql.util.DriverInfo;
 import org.postgresql.util.GT;
 import org.postgresql.util.HostSpec;
-import org.postgresql.util.ObjectFactory;
 import org.postgresql.util.PGPropertyUtil;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
@@ -56,22 +55,16 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
-import java.util.Objects;
 import java.util.Properties;
-import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Condition;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * The Java SQL framework allows for multiple database drivers. Each driver should supply a class
- * that implements the Driver interface
+ * <p>The Java SQL framework allows for multiple database drivers. Each driver should supply a class
+ * that implements the Driver interface</p>
  *
  * <p>The DriverManager will try to load as many drivers as it can find and then for any given
  * connection request, it will ask each driver in turn to try to connect to the target URL.</p>
@@ -152,8 +145,7 @@ public class Driver implements java.sql.Driver {
 
   private static <T> T doPrivileged(PrivilegedExceptionAction<T> action) throws Throwable {
     try {
-      Class<?> accessControllerClass = Class.forName("java.security.AccessController", true,
-          Driver.class.getClassLoader());
+      Class<?> accessControllerClass = Class.forName("java.security.AccessController");
       Method doPrivileged = accessControllerClass.getMethod("doPrivileged",
           PrivilegedExceptionAction.class);
       //noinspection unchecked
@@ -185,13 +177,13 @@ public class Driver implements java.sql.Driver {
     // neither case can throw SecurityException.
     ClassLoader cl = getClass().getClassLoader();
     if (cl == null) {
-      LOGGER.log(Level.FINE, "Can''t find our classloader for the Driver; "
+      LOGGER.log(Level.FINE, "Can't find our classloader for the Driver; "
           + "attempt to use the system class loader");
       cl = ClassLoader.getSystemClassLoader();
     }
 
     if (cl == null) {
-      LOGGER.log(Level.WARNING, "Can''t find a classloader for the Driver; not loading driver "
+      LOGGER.log(Level.WARNING, "Can't find a classloader for the Driver; not loading driver "
           + "configuration from org/postgresql/driverconfig.properties");
       return merged; // Give up on finding defaults.
     }
@@ -220,10 +212,10 @@ public class Driver implements java.sql.Driver {
   }
 
   /**
-   * Try to make a database connection to the given URL. The driver should return "null" if it
+   * <p>Try to make a database connection to the given URL. The driver should return "null" if it
    * realizes it is the wrong kind of driver to connect to the given URL. This will be common, as
    * when the JDBC driverManager is asked to connect to a given URL, it passes the URL to each
-   * loaded driver in turn.
+   * loaded driver in turn.</p>
    *
    * <p>The driver should raise an SQLException if it is the right driver to connect to the given URL,
    * but has trouble connecting to the database.</p>
@@ -266,8 +258,8 @@ public class Driver implements java.sql.Driver {
    * @param url the URL of the database to connect to
    * @param info a list of arbitrary tag/value pairs as connection arguments
    * @return a connection to the URL or null if it isnt us
-   * @throws SQLException if a database access error occurs or the url is
-   *         {@code null}
+   * @exception SQLException if a database access error occurs or the url is
+   *            {@code null}
    * @see java.sql.Driver#connect
    */
   @Override
@@ -296,8 +288,8 @@ public class Driver implements java.sql.Driver {
         String propValue = info.getProperty(propName);
         if (propValue == null) {
           throw new PSQLException(
-              GT.tr("Properties for the driver contains a non-string value for the key {0}",
-                  propName),
+              GT.tr("Properties for the driver contains a non-string value for the key ")
+                  + propName,
               PSQLState.UNEXPECTED_ERROR);
         }
         props.setProperty(propName, propValue);
@@ -313,22 +305,44 @@ public class Driver implements java.sql.Driver {
 
       LOGGER.log(Level.FINE, "Connecting with URL: {0}", url);
 
-      // Enforce login timeout, if specified, by handing the connection
-      // attempt to an Executor, which must run it on a thread other than
-      // this one. If we hit the timeout without the connection completing,
-      // we abandon the connection attempt in the calling thread and try to
-      // cancel the worker thread. If cancellation does not take effect
-      // immediately, the worker cleans up any connection it manages to
-      // establish after abandonment. See ConnectTask for more details.
+      // Enforce login timeout, if specified, by running the connection
+      // attempt in a separate thread. If we hit the timeout without the
+      // connection completing, we abandon the connection attempt in
+      // the calling thread, but the separate thread will keep trying.
+      // Eventually, the separate thread will either fail or complete
+      // the connection; at that point we clean up the connection if
+      // we managed to establish one after all. See ConnectThread for
+      // more details.
       long timeout = timeout(props);
+      LoadBalanceProperties lbprops = new LoadBalanceProperties(url, props);
+
       if (timeout <= 0) {
-        return makeConnection(url, props);
+        return makeConnection(url, props, lbprops, null);
       }
 
-      ConnectTask ct = new ConnectTask(url, props);
-      Executor executor = resolveConnectExecutor(props);
-      executor.execute(ct);
-      return ct.getResult(timeout);
+      ConnectThread ct;
+      ArrayList<String> prevTimedOutServers = new ArrayList<>();
+      int maxRetries = 10;
+      int tries = 0;
+      while(true) {
+        ct = new ConnectThread(url, props, lbprops, prevTimedOutServers);
+        try {
+          Thread thread = new Thread(ct, "PostgreSQL JDBC driver connection thread");
+          thread.setDaemon(true); // Don't prevent the VM from shutting down
+          thread.start();
+          return ct.getResult(timeout);
+        } catch (PSQLException ex1) {
+          LOGGER.log(Level.INFO, "got exception state: " + ex1.getSQLState());
+          if (lbprops.hasLoadBalance() && !prevTimedOutServers.isEmpty() && tries++ < maxRetries &&
+              ex1.getSQLState().equals(PSQLState.CONNECTION_UNABLE_TO_CONNECT.getState())) {
+            LOGGER.log(Level.INFO, "Connection timeout error occurred with server: "
+                + prevTimedOutServers.get(prevTimedOutServers.size()) +
+                " trying other servers, retryAttempt=" + tries);
+          } else {
+            throw ex1;
+          }
+        }
+      }
     } catch (PSQLException ex1) {
       LOGGER.log(Level.FINE, "Connection error: ", ex1);
       // re-throw the exception, otherwise it will be caught next, and a
@@ -356,124 +370,149 @@ public class Driver implements java.sql.Driver {
    *  due to a security issue
    * @param props Connection Properties
    */
-  @SuppressWarnings({"MethodCanBeStatic", "UnusedMethod"})
-  private void setupLoggerFromProperties(@SuppressWarnings("UnusedVariable") Properties props) {
+  private void setupLoggerFromProperties(final Properties props) {
   }
 
   /**
    * Perform a connect in a separate thread; supports getting the results from the original thread
    * while enforcing a login timeout.
-   *
-   * <p>If the caller times out or is interrupted, we mark the attempt as abandoned and try to
-   * cancel the worker thread. Cancellation is best-effort: if the connection attempt does not stop
-   * immediately, the worker closes any connection it manages to establish after abandonment so that
-   * it does not leak.</p>
    */
-  private static class ConnectTask implements Runnable {
-    private volatile boolean abandoned;
-    private final AtomicReference<@Nullable Connection> establishedConnection = new AtomicReference<>();
-    private final FutureTask<Connection> futureTask;
+  private static class ConnectThread implements Runnable {
+    private final ResourceLock lock = new ResourceLock();
+    private final Condition lockCondition = lock.newCondition();
 
-    ConnectTask(String url, Properties props) {
-      this.futureTask = new FutureTask<>(() -> {
-        Connection conn = makeConnection(url, props);
-        establishedConnection.set(conn);
-        if (abandoned && establishedConnection.compareAndSet(conn, null)) {
-          closeConnection(conn);
-        }
-        return conn;
-      });
+    private final ArrayList<String> triedHosts;
+    private final LoadBalanceProperties lbprops;
+    ConnectThread(String url, Properties props,
+        LoadBalanceProperties lbprops, ArrayList<String> prevTimedOutServers) {
+      this.url = url;
+      this.props = props;
+      this.lbprops = lbprops;
+      triedHosts = prevTimedOutServers;
     }
 
     @Override
     public void run() {
-      futureTask.run();
+      Connection conn;
+      Throwable error;
+
+      try {
+        conn = makeConnection(url, props, lbprops, triedHosts);
+        error = null;
+      } catch (Throwable t) {
+        conn = null;
+        error = t;
+      }
+
+      try (ResourceLock ignore = lock.obtain()) {
+        if (abandoned) {
+          if (conn != null) {
+            try {
+              conn.close();
+            } catch (SQLException e) {
+            }
+          }
+        } else {
+          result = conn;
+          resultException = error;
+          lockCondition.signal();
+        }
+      }
     }
 
     /**
-     * Get the connection result from this (assumed running) task. If the timeout is reached
+     * Get the connection result from this (assumed running) thread. If the timeout is reached
      * without a result being available, a SQLException is thrown.
      *
      * @param timeout timeout in milliseconds
      * @return the new connection, if successful
      * @throws SQLException if a connection error occurs or the timeout is reached
      */
-    Connection getResult(long timeout) throws SQLException {
-      try {
-        return futureTask.get(timeout, TimeUnit.MILLISECONDS);
-      } catch (TimeoutException te) {
-        abandon();
-        throw new PSQLException(GT.tr("Connection attempt timed out."),
-            PSQLState.CONNECTION_UNABLE_TO_CONNECT);
-      } catch (InterruptedException ie) {
-        abandon();
+    public Connection getResult(long timeout) throws SQLException {
+      long expiry = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) + timeout;
+      try (ResourceLock ignore = lock.obtain()) {
+        while (true) {
+          if (result != null) {
+            return result;
+          }
 
-        // reset the interrupt flag
-        Thread.currentThread().interrupt();
+          Throwable resultException = this.resultException;
+          if (resultException != null) {
+            if (resultException instanceof SQLException) {
+              resultException.fillInStackTrace();
+              throw (SQLException) resultException;
+            } else {
+              throw new PSQLException(
+                  GT.tr(
+                      "Something unusual has occurred to cause the driver to fail. Please report this exception."),
+                  PSQLState.UNEXPECTED_ERROR, resultException);
+            }
+          }
 
-        // throw an unchecked exception which will hopefully not be ignored by the calling code
-        throw new RuntimeException(GT.tr("Interrupted while attempting to connect."));
-      } catch (ExecutionException ee) {
-        Throwable resultException = ee.getCause();
-        if (resultException instanceof SQLException) {
-          resultException.fillInStackTrace();
-          throw (SQLException) resultException;
-        } else {
-          throw new PSQLException(
-              GT.tr(
-                  "Something unusual has occurred to cause the driver to fail. Please report this exception."),
-              PSQLState.UNEXPECTED_ERROR, resultException);
+          long delay = expiry - TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+          if (delay <= 0) {
+            abandoned = true;
+            throw new PSQLException(GT.tr("Connection attempt timed out."),
+                PSQLState.CONNECTION_UNABLE_TO_CONNECT);
+          }
+
+          try {
+            lockCondition.await(delay, TimeUnit.MILLISECONDS);
+          } catch (InterruptedException ie) {
+
+            // reset the interrupt flag
+            Thread.currentThread().interrupt();
+            abandoned = true;
+
+            // throw an unchecked exception which will hopefully not be ignored by the calling code
+            throw new RuntimeException(GT.tr("Interrupted while attempting to connect."));
+          }
         }
       }
     }
 
-    private void abandon() {
-      abandoned = true;
-      futureTask.cancel(true);
-      closeConnection(establishedConnection.getAndSet(null));
-    }
-
-    private static void closeConnection(@Nullable Connection conn) {
-      if (conn != null) {
-        try {
-          conn.close();
-        } catch (SQLException ignored) {
-          // best-effort cleanup after abandonment
-        }
-      }
-    }
+    private final String url;
+    private final Properties props;
+    private @Nullable Connection result;
+    private @Nullable Throwable resultException;
+    private boolean abandoned;
   }
 
   /**
    * Create a connection from URL and properties. Always does the connection work in the current
    * thread without enforcing a timeout, regardless of any timeout specified in the properties.
    *
-   * @param url the original URL
-   * @param properties the parsed/defaulted connection properties
+   * @param url           the original URL
+   * @param properties    the parsed/defaulted connection properties
+   * @param timedOutHosts A list of previously timedout servers passed from Connect thread
    * @return a new connection
    * @throws SQLException if the connection could not be made
    */
-  private static Connection makeConnection(String url, Properties properties) throws SQLException {
-    LoadBalanceProperties lbprops = new LoadBalanceProperties(url, properties);
+  private static Connection makeConnection(String url, Properties properties,
+      LoadBalanceProperties lbprops, ArrayList<String> timedOutHosts) throws SQLException {
     if (lbprops.hasLoadBalance()) {
-      Connection conn = getConnectionBalanced(lbprops);
+      Connection conn = getConnectionBalanced(lbprops, timedOutHosts);
       if (conn != null) {
         return conn;
       }
       LOGGER.log(Level.WARNING, "Failed to apply load balance. Trying normal connection");
     }
+    // Make the timedOutHosts empty so that the connect thread does not retry because of failures from
+    // the original connect attempt.
+    if (timedOutHosts != null) timedOutHosts.clear();
     // Attempt connection with the original properties
     return new PgConnection(hostSpecs(properties), properties, url);
   }
 
-  private static Connection getConnectionBalanced(LoadBalanceProperties lbprops) {
+  private static Connection getConnectionBalanced(LoadBalanceProperties lbprops,
+      ArrayList<String> timedOutHosts) {
     LOGGER.log(Level.FINE, "GetConnectionBalanced called");
     ClusterAwareLoadBalancer loadBalancer = lbprops.getAppropriateLoadBalancer();
     Properties props = lbprops.getStrippedProperties();
     String url = lbprops.getStrippedURL();
     Set<String> unreachableHosts = loadBalancer.getUnreachableHosts();
     List<String> failedHosts = new ArrayList<>(unreachableHosts);
-    String chosenHost = loadBalancer.getLeastLoadedServer(failedHosts);
+    String chosenHost = loadBalancer.getLeastLoadedServer(failedHosts, timedOutHosts);
     PgConnection newConnection = null;
     Connection controlConnection = null;
     SQLException firstException = null;
@@ -492,6 +531,7 @@ public class Driver implements java.sql.Driver {
         controlConnection.close();
       } catch (SQLException ex) {
         if (PSQLState.UNDEFINED_FUNCTION.getState().equals(ex.getSQLState())) {
+          LOGGER.log(Level.WARNING, "yb_servers() is not defined on the server");
           return null;
         }
         gotException = true;
@@ -504,7 +544,7 @@ public class Driver implements java.sql.Driver {
           }
         }
       }
-      chosenHost = loadBalancer.getLeastLoadedServer(failedHosts);
+      chosenHost = loadBalancer.getLeastLoadedServer(failedHosts, timedOutHosts);
     }
     if (chosenHost == null) {
       return null;
@@ -517,6 +557,9 @@ public class Driver implements java.sql.Driver {
         String port = loadBalancer.getPort(chosenHost);
         if (port != null) {
           props.setProperty("PGPORT", port);
+        }
+        if (timedOutHosts != null) {
+          timedOutHosts.add(chosenHost);
         }
         newConnection = new PgConnection(hostSpecs(props), props, url);
         newConnection.setLoadBalancer(loadBalancer);
@@ -541,7 +584,7 @@ public class Driver implements java.sql.Driver {
                 "A higher priority node than " + chosenHost + " is available");
             loadBalancer.decrementHostToNumConnCount(chosenHost);
             newConnection.close();
-            return getConnectionBalanced(lbprops);
+            return getConnectionBalanced(lbprops, timedOutHosts);
           }
           return newConnection;
         }
@@ -573,7 +616,7 @@ public class Driver implements java.sql.Driver {
               "got exception " + ex.getMessage() + ", while connecting to " + chosenHost);
         }
       }
-      chosenHost = loadBalancer.getLeastLoadedServer(failedHosts);
+      chosenHost = loadBalancer.getLeastLoadedServer(failedHosts, timedOutHosts);
     }
     return null;
   }
@@ -589,13 +632,12 @@ public class Driver implements java.sql.Driver {
    */
   @Override
   public boolean acceptsURL(String url) {
-    Objects.requireNonNull(url, "url");
     return parseURL(url, null) != null;
   }
 
   /**
-   * The getPropertyInfo method is intended to allow a generic GUI tool to discover what properties
-   * it should prompt a human for in order to get enough information to connect to a database.
+   * <p>The getPropertyInfo method is intended to allow a generic GUI tool to discover what properties
+   * it should prompt a human for in order to get enough information to connect to a database.</p>
    *
    * <p>Note that depending on the values the human has supplied so far, additional values may become
    * necessary, so it may be necessary to iterate through several calls to getPropertyInfo</p>
@@ -645,9 +687,9 @@ public class Driver implements java.sql.Driver {
   }
 
   /**
-   * Report whether the driver is a genuine JDBC compliant driver. A driver may only report "true"
+   * <p>Report whether the driver is a genuine JDBC compliant driver. A driver may only report "true"
    * here if it passes the JDBC compliance tests, otherwise it is required to return false. JDBC
-   * compliance requires full support for the JDBC API and full support for SQL 92 Entry Level.
+   * compliance requires full support for the JDBC API and full support for SQL 92 Entry Level.</p>
    *
    * <p>For PostgreSQL, this is not yet possible, as we are not SQL92 compliant (yet).</p>
    */
@@ -853,28 +895,6 @@ public class Driver implements java.sql.Driver {
     return hostSpecs;
   }
 
-  private static final Executor DEFAULT_EXECUTOR = r -> {
-    Thread thread = new Thread(r, "PostgreSQL JDBC driver connection thread");
-    thread.setDaemon(true); // Don't prevent the VM from shutting down
-    thread.start();
-  };
-
-  private static Executor resolveConnectExecutor(Properties props)
-      throws PSQLException {
-    String className = PGProperty.CONNECT_EXECUTOR.getOrDefault(props);
-    if (className == null || className.isEmpty()) {
-      return DEFAULT_EXECUTOR;
-    }
-    try {
-      return ObjectFactory.instantiate(Executor.class, className, props, true,
-          PGProperty.CONNECT_EXECUTOR_ARG.getOrDefault(props));
-    } catch (Exception ex) {
-      throw new PSQLException(
-          GT.tr("Could not instantiate connectExecutor: {0}", className),
-          PSQLState.INVALID_PARAMETER_VALUE, ex);
-    }
-  }
-
   /**
    * @return the timeout from the URL, in milliseconds
    */
@@ -884,7 +904,7 @@ public class Driver implements java.sql.Driver {
       try {
         return (long) (Float.parseFloat(timeout) * 1000);
       } catch (NumberFormatException e) {
-        LOGGER.log(Level.WARNING, "Couldn''t parse loginTimeout value: {0}", timeout);
+        LOGGER.log(Level.WARNING, "Couldn't parse loginTimeout value: {0}", timeout);
       }
     }
     return (long) DriverManager.getLoginTimeout() * 1000;
@@ -950,11 +970,6 @@ public class Driver implements java.sql.Driver {
     }
     DriverManager.deregisterDriver(registeredDriver);
     registeredDriver = null;
-    // Release the cached localized message bundle. A class-based translation bundle (for example
-    // messages_tr) otherwise keeps this classloader alive through the JVM-wide ResourceBundle cache,
-    // which defeats the very purpose of deregistering the driver. The no-arg clearCache() clears the
-    // entries for this caller's classloader, which is the one GT used to load the bundle.
-    ResourceBundle.clearCache();
   }
 
   /**
