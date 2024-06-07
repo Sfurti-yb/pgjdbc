@@ -321,14 +321,35 @@ public class Driver implements java.sql.Driver {
       // immediately, the worker cleans up any connection it manages to
       // establish after abandonment. See ConnectTask for more details.
       long timeout = timeout(props);
+      LoadBalanceProperties lbprops = new LoadBalanceProperties(url, props);
+
       if (timeout <= 0) {
-        return makeConnection(url, props);
+        return makeConnection(url, props, lbprops, null);
       }
 
-      ConnectTask ct = new ConnectTask(url, props);
-      Executor executor = resolveConnectExecutor(props);
-      executor.execute(ct);
-      return ct.getResult(timeout);
+      ConnectThread ct;
+      ArrayList<String> prevTimedOutServers = new ArrayList<>();
+      int maxRetries = 10;
+      int tries = 0;
+      while(true) {
+        ct = new ConnectThread(url, props, lbprops, prevTimedOutServers);
+        try {
+          Thread thread = new Thread(ct, "PostgreSQL JDBC driver connection thread");
+          thread.setDaemon(true); // Don't prevent the VM from shutting down
+          thread.start();
+          return ct.getResult(timeout);
+        } catch (PSQLException ex1) {
+          LOGGER.log(Level.INFO, "got exception state: " + ex1.getSQLState());
+          if (lbprops.hasLoadBalance() && !prevTimedOutServers.isEmpty() && tries++ < maxRetries &&
+              ex1.getSQLState().equals(PSQLState.CONNECTION_UNABLE_TO_CONNECT.getState())) {
+            LOGGER.log(Level.INFO, "Connection timeout error occurred with server: "
+                + prevTimedOutServers.get(prevTimedOutServers.size()) +
+                " trying other servers, retryAttempt=" + tries);
+          } else {
+            throw ex1;
+          }
+        }
+      }
     } catch (PSQLException ex1) {
       LOGGER.log(Level.FINE, "Connection error: ", ex1);
       // re-throw the exception, otherwise it will be caught next, and a
@@ -363,117 +384,143 @@ public class Driver implements java.sql.Driver {
   /**
    * Perform a connect in a separate thread; supports getting the results from the original thread
    * while enforcing a login timeout.
-   *
-   * <p>If the caller times out or is interrupted, we mark the attempt as abandoned and try to
-   * cancel the worker thread. Cancellation is best-effort: if the connection attempt does not stop
-   * immediately, the worker closes any connection it manages to establish after abandonment so that
-   * it does not leak.</p>
    */
-  private static class ConnectTask implements Runnable {
-    private volatile boolean abandoned;
-    private final AtomicReference<@Nullable Connection> establishedConnection = new AtomicReference<>();
-    private final FutureTask<Connection> futureTask;
+  private static class ConnectThread implements Runnable {
+    private final ResourceLock lock = new ResourceLock();
+    private final Condition lockCondition = lock.newCondition();
 
-    ConnectTask(String url, Properties props) {
-      this.futureTask = new FutureTask<>(() -> {
-        Connection conn = makeConnection(url, props);
-        establishedConnection.set(conn);
-        if (abandoned && establishedConnection.compareAndSet(conn, null)) {
-          closeConnection(conn);
-        }
-        return conn;
-      });
+    private final ArrayList<String> triedHosts;
+    private final LoadBalanceProperties lbprops;
+    ConnectThread(String url, Properties props,
+        LoadBalanceProperties lbprops, ArrayList<String> prevTimedOutServers) {
+      this.url = url;
+      this.props = props;
+      this.lbprops = lbprops;
+      triedHosts = prevTimedOutServers;
     }
 
     @Override
     public void run() {
-      futureTask.run();
+      Connection conn;
+      Throwable error;
+
+      try {
+        conn = makeConnection(url, props, lbprops, triedHosts);
+        error = null;
+      } catch (Throwable t) {
+        conn = null;
+        error = t;
+      }
+
+      try (ResourceLock ignore = lock.obtain()) {
+        if (abandoned) {
+          if (conn != null) {
+            try {
+              conn.close();
+            } catch (SQLException e) {
+            }
+          }
+        } else {
+          result = conn;
+          resultException = error;
+          lockCondition.signal();
+        }
+      }
     }
 
     /**
-     * Get the connection result from this (assumed running) task. If the timeout is reached
+     * Get the connection result from this (assumed running) thread. If the timeout is reached
      * without a result being available, a SQLException is thrown.
      *
      * @param timeout timeout in milliseconds
      * @return the new connection, if successful
      * @throws SQLException if a connection error occurs or the timeout is reached
      */
-    Connection getResult(long timeout) throws SQLException {
-      try {
-        return futureTask.get(timeout, TimeUnit.MILLISECONDS);
-      } catch (TimeoutException te) {
-        abandon();
-        throw new PSQLException(GT.tr("Connection attempt timed out."),
-            PSQLState.CONNECTION_UNABLE_TO_CONNECT);
-      } catch (InterruptedException ie) {
-        abandon();
+    public Connection getResult(long timeout) throws SQLException {
+      long expiry = TimeUnit.NANOSECONDS.toMillis(System.nanoTime()) + timeout;
+      try (ResourceLock ignore = lock.obtain()) {
+        while (true) {
+          if (result != null) {
+            return result;
+          }
 
-        // reset the interrupt flag
-        Thread.currentThread().interrupt();
+          Throwable resultException = this.resultException;
+          if (resultException != null) {
+            if (resultException instanceof SQLException) {
+              resultException.fillInStackTrace();
+              throw (SQLException) resultException;
+            } else {
+              throw new PSQLException(
+                  GT.tr(
+                      "Something unusual has occurred to cause the driver to fail. Please report this exception."),
+                  PSQLState.UNEXPECTED_ERROR, resultException);
+            }
+          }
 
-        // throw an unchecked exception which will hopefully not be ignored by the calling code
-        throw new RuntimeException(GT.tr("Interrupted while attempting to connect."));
-      } catch (ExecutionException ee) {
-        Throwable resultException = ee.getCause();
-        if (resultException instanceof SQLException) {
-          resultException.fillInStackTrace();
-          throw (SQLException) resultException;
-        } else {
-          throw new PSQLException(
-              GT.tr(
-                  "Something unusual has occurred to cause the driver to fail. Please report this exception."),
-              PSQLState.UNEXPECTED_ERROR, resultException);
+          long delay = expiry - TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+          if (delay <= 0) {
+            abandoned = true;
+            throw new PSQLException(GT.tr("Connection attempt timed out."),
+                PSQLState.CONNECTION_UNABLE_TO_CONNECT);
+          }
+
+          try {
+            lockCondition.await(delay, TimeUnit.MILLISECONDS);
+          } catch (InterruptedException ie) {
+
+            // reset the interrupt flag
+            Thread.currentThread().interrupt();
+            abandoned = true;
+
+            // throw an unchecked exception which will hopefully not be ignored by the calling code
+            throw new RuntimeException(GT.tr("Interrupted while attempting to connect."));
+          }
         }
       }
     }
 
-    private void abandon() {
-      abandoned = true;
-      futureTask.cancel(true);
-      closeConnection(establishedConnection.getAndSet(null));
-    }
-
-    private static void closeConnection(@Nullable Connection conn) {
-      if (conn != null) {
-        try {
-          conn.close();
-        } catch (SQLException ignored) {
-          // best-effort cleanup after abandonment
-        }
-      }
-    }
+    private final String url;
+    private final Properties props;
+    private @Nullable Connection result;
+    private @Nullable Throwable resultException;
+    private boolean abandoned;
   }
 
   /**
    * Create a connection from URL and properties. Always does the connection work in the current
    * thread without enforcing a timeout, regardless of any timeout specified in the properties.
    *
-   * @param url the original URL
-   * @param properties the parsed/defaulted connection properties
+   * @param url           the original URL
+   * @param properties    the parsed/defaulted connection properties
+   * @param timedOutHosts A list of previously timedout servers passed from Connect thread
    * @return a new connection
    * @throws SQLException if the connection could not be made
    */
-  private static Connection makeConnection(String url, Properties properties) throws SQLException {
-    LoadBalanceProperties lbprops = new LoadBalanceProperties(url, properties);
+  private static Connection makeConnection(String url, Properties properties,
+      LoadBalanceProperties lbprops, ArrayList<String> timedOutHosts) throws SQLException {
     if (lbprops.hasLoadBalance()) {
-      Connection conn = getConnectionBalanced(lbprops);
+      Connection conn = getConnectionBalanced(lbprops, timedOutHosts);
       if (conn != null) {
         return conn;
       }
       LOGGER.log(Level.WARNING, "Failed to apply load balance. Trying normal connection");
     }
+    // Make the timedOutHosts empty so that the connect thread does not retry because of failures from
+    // the original connect attempt.
+    if (timedOutHosts != null) timedOutHosts.clear();
     // Attempt connection with the original properties
     return new PgConnection(hostSpecs(properties), properties, url);
   }
 
-  private static Connection getConnectionBalanced(LoadBalanceProperties lbprops) {
+  private static Connection getConnectionBalanced(LoadBalanceProperties lbprops,
+      ArrayList<String> timedOutHosts) {
     LOGGER.log(Level.FINE, "GetConnectionBalanced called");
     ClusterAwareLoadBalancer loadBalancer = lbprops.getAppropriateLoadBalancer();
     Properties props = lbprops.getStrippedProperties();
     String url = lbprops.getStrippedURL();
     Set<String> unreachableHosts = loadBalancer.getUnreachableHosts();
     List<String> failedHosts = new ArrayList<>(unreachableHosts);
-    String chosenHost = loadBalancer.getLeastLoadedServer(failedHosts);
+    String chosenHost = loadBalancer.getLeastLoadedServer(failedHosts, timedOutHosts);
     PgConnection newConnection = null;
     Connection controlConnection = null;
     SQLException firstException = null;
@@ -492,6 +539,7 @@ public class Driver implements java.sql.Driver {
         controlConnection.close();
       } catch (SQLException ex) {
         if (PSQLState.UNDEFINED_FUNCTION.getState().equals(ex.getSQLState())) {
+          LOGGER.log(Level.WARNING, "yb_servers() is not defined on the server");
           return null;
         }
         gotException = true;
@@ -504,7 +552,7 @@ public class Driver implements java.sql.Driver {
           }
         }
       }
-      chosenHost = loadBalancer.getLeastLoadedServer(failedHosts);
+      chosenHost = loadBalancer.getLeastLoadedServer(failedHosts, timedOutHosts);
     }
     if (chosenHost == null) {
       return null;
@@ -517,6 +565,9 @@ public class Driver implements java.sql.Driver {
         String port = loadBalancer.getPort(chosenHost);
         if (port != null) {
           props.setProperty("PGPORT", port);
+        }
+        if (timedOutHosts != null) {
+          timedOutHosts.add(chosenHost);
         }
         newConnection = new PgConnection(hostSpecs(props), props, url);
         newConnection.setLoadBalancer(loadBalancer);
@@ -541,7 +592,7 @@ public class Driver implements java.sql.Driver {
                 "A higher priority node than " + chosenHost + " is available");
             loadBalancer.decrementHostToNumConnCount(chosenHost);
             newConnection.close();
-            return getConnectionBalanced(lbprops);
+            return getConnectionBalanced(lbprops, timedOutHosts);
           }
           return newConnection;
         }
@@ -573,7 +624,7 @@ public class Driver implements java.sql.Driver {
               "got exception " + ex.getMessage() + ", while connecting to " + chosenHost);
         }
       }
-      chosenHost = loadBalancer.getLeastLoadedServer(failedHosts);
+      chosenHost = loadBalancer.getLeastLoadedServer(failedHosts, timedOutHosts);
     }
     return null;
   }
