@@ -5,8 +5,6 @@
 
 package org.postgresql.ssl;
 
-import com.yugabyte.ysql.YBManagedHostnameVerifier;
-
 import org.postgresql.PGProperty;
 import org.postgresql.core.PGStream;
 import org.postgresql.core.SocketFactoryFactory;
@@ -17,6 +15,8 @@ import org.postgresql.util.ObjectFactory;
 import org.postgresql.util.PSQLException;
 import org.postgresql.util.PSQLState;
 import org.postgresql.util.internal.Nullness;
+
+import com.yugabyte.ysql.YBManagedHostnameVerifier;
 
 import java.io.IOException;
 import java.util.Properties;
