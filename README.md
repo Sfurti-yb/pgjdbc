@@ -30,7 +30,7 @@ Please refer to the [Use the Driver](#Use the Driver) section for examples.
 
 ### From Maven
 
-Either add the following lines to your maven project in pom.xml file.
+Either add the following lines to your maven project in pom.xml file (Use the latest version available),
 ```
 <dependency>
   <groupId>com.yugabyte</groupId>
@@ -138,13 +138,13 @@ In addition to the standard connection parameters the driver supports a number o
 | stringtype                    | String |          null           | Specify the type to use when binding `PreparedStatement` parameters set via `setString()`                                                                                                                                                                                                                                                     |
 | channelBinding                 | String |   prefer    | This option controls the client's use of channel binding. `require` means that the connection must employ channel binding, `prefer` means that the client will choose channel binding if available, and `disable` prevents the use of channel binding.                                                                                                   |
 
-4. Finally, use it by adding the lines below to your project.
+3. Finally, use it by adding the lines below to your project. (Use the latest version available)
 
     ```xml
     <dependency>
         <groupId>com.yugabyte</groupId>
         <artifactId>jdbc-yugabytedb</artifactId>
-        <version>42.3.1-SNAPSHOT</version>
+        <version>42.7.13-yb-1-SNAPSHOT</version>
     </dependency> 
     ```
 ####Note: You need to have installed 2.7.2.0-b0 or above version of YugabyteDB on your system for load balancing to work.
