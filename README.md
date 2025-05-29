@@ -175,3 +175,49 @@ String yburl = "jdbc:yugabytedb://127.0.0.1:5433/yugabyte?user=yugabyte&password
     Otherwise, when the driver needs to connect to any of these additional endpoints (when the primary endpoint
     specified via `serverName` is unavailable), it will use the default port number (`5433`) and not
     `dataSource.portNumber` to connect to them.
+
+## Logging using java.util.logging
+
+The YugabyteDB JDBC Driver supports the use of logging (or tracing) to help resolve issues with the pgJDBC Driver when is used in your application.
+
+The smart driver uses the logging APIs of `java.util.logging` that is part of Java since JDK 1.4, Also, it's a good choice for the driver since it doesn’t add any external dependency for a logging framework. `java.util.logging` is a very rich and powerful tool.
+
+This logging support was added since version 42.7.3-yb-1 of the YugabyteDB pgJDBC Driver.  The previous versions used a custom mechanism to enable logging but it is replaced by the use of `java.util.logging` in current versions. The old mechanism is no longer supported.
+
+### Configuration 
+
+The root logger used by the pgJDBC driver is `com.yugabyte`.
+
+Enable logging by using logging.properties file 
+The default Java logging framework stores its configuration in a file called logging.properties . Settings are stored per line using a dot notation format. Java installs a global configuration file in the lib folder of the Java installation directory, although you can use a separate configuration file by specifying the java.util.logging.config.file property when starting a Java program. logging.properties files can also be created and stored with individual projects.
+
+The following is an example of setting that you can make in the logging.properties to enable logs at FINEST level for 5 classes specified at the end and at INFO level for rest of them:
+
+```
+# Specify the handler, the handlers will be installed during VM startup.
+handlers = java.util.logging.FileHandler
+
+# Default global logging level.
+.level = OFF
+
+# Default file output is in user's home directory.
+java.util.logging.FileHandler.pattern = pgjdbc.log
+java.util.logging.FileHandler.limit = 5000000
+java.util.logging.FileHandler.count = 20
+java.util.logging.FileHandler.formatter = java.util.logging.SimpleFormatter
+java.util.logging.FileHandler.level = FINEST
+
+java.util.logging.SimpleFormatter.format = %1$tY-%1$tm-%1$td %1$tH:%1$tM:%1$tS %4$s %2$s %5$s%6$s%n
+
+# Facility specific properties.
+com.yugabyte.level = INFO
+com.yugabyte.com.yugabyte.ysql.LoadBalanceService.level = FINEST
+com.yugabyte.com.yugabyte.ysql.ClusterAwareLoadBalancer.level = FINEST
+com.yugabyte.com.yugabyte.ysql.LoadBalanceProperties.level = FINEST
+com.yugabyte.com.yugabyte.ysql.TopologyAwareLoadBalancer.level = FINEST
+com.yugabyte.com.yugabyte.ysql.YBManagedHostnameVerifier.level = FINEST
+```
+
+And when you run your application you pass the system property:
+
+java -jar -Djava.util.logging.config.file=logging.properties run.jar
