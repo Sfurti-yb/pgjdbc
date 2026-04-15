@@ -97,16 +97,16 @@ class DriverTest {
     Driver drv = new Driver();
     assertNotNull(drv);
 
-    // These are always correct
-    verifyUrl(drv, "jdbc:yugabytedb:test", "localhost", "5432", "test");
-    verifyUrl(drv, "jdbc:yugabytedb://localhost/test", "localhost", "5432", "test");
-    verifyUrl(drv, "jdbc:yugabytedb://localhost,locahost2/test", "localhost,locahost2", "5432,5432", "test");
+    // Default port expectations match Yugabyte fork (Driver.DEFAULT_PORT = 5433), not upstream PG 5432.
+    verifyUrl(drv, "jdbc:yugabytedb:test", "localhost", "5433", "test");
+    verifyUrl(drv, "jdbc:yugabytedb://localhost/test", "localhost", "5433", "test");
+    verifyUrl(drv, "jdbc:yugabytedb://localhost,locahost2/test", "localhost,locahost2", "5433,5433", "test");
     verifyUrl(drv, "jdbc:yugabytedb://localhost:5433,locahost2:5434/test", "localhost,locahost2", "5433,5434", "test");
-    verifyUrl(drv, "jdbc:yugabytedb://[::1]:5433,:5434,[::1]/test", "[::1],localhost,[::1]", "5433,5434,5432", "test");
+    verifyUrl(drv, "jdbc:yugabytedb://[::1]:5433,:5434,[::1]/test", "[::1],localhost,[::1]", "5433,5434,5433", "test");
     verifyUrl(drv, "jdbc:yugabytedb://localhost/test?port=8888", "localhost", "8888", "test");
     verifyUrl(drv, "jdbc:yugabytedb://localhost:5432/test", "localhost", "5432", "test");
     verifyUrl(drv, "jdbc:yugabytedb://localhost:5432/test?dbname=test2", "localhost", "5432", "test2");
-    verifyUrl(drv, "jdbc:yugabytedb://127.0.0.1/anydbname", "127.0.0.1", "5432", "anydbname");
+    verifyUrl(drv, "jdbc:yugabytedb://127.0.0.1/anydbname", "127.0.0.1", "5433", "anydbname");
     verifyUrl(drv, "jdbc:yugabytedb://127.0.0.1:5433/hidden", "127.0.0.1", "5433", "hidden");
     verifyUrl(drv, "jdbc:yugabytedb://127.0.0.1:5433/hidden?port=7777", "127.0.0.1", "7777", "hidden");
     verifyUrl(drv, "jdbc:yugabytedb://[::1]:5740/db", "[::1]", "5740", "db");
@@ -119,44 +119,6 @@ class DriverTest {
         new SystemProperties(PGEnvironment.ORG_POSTGRESQL_PGSERVICEFILE.getName(), urlFileProps.getFile())
     ).execute(() -> {
       // correct cases
-<<<<<<< HEAD
-      verifyUrl(drv, "jdbc:postgresql://?service=driverTestService1", "test-host1", "5444", "testdb1");
-      verifyUrl(drv, "jdbc:postgresql://?service=driverTestService1&host=other-host", "other-host", "5444", "testdb1");
-      verifyUrl(drv, "jdbc:postgresql:///?service=driverTestService1", "test-host1", "5444", "testdb1");
-      verifyUrl(drv, "jdbc:postgresql:///?service=driverTestService1&port=3333&dbname=other-db", "test-host1", "3333", "other-db");
-      verifyUrl(drv, "jdbc:postgresql://localhost:5432/test?service=driverTestService1", "localhost", "5432", "test");
-      verifyUrl(drv, "jdbc:postgresql://localhost:5432/test?port=7777&dbname=other-db&service=driverTestService1", "localhost", "7777", "other-db");
-      verifyUrl(drv, "jdbc:postgresql://[::1]:5740/?service=driverTestService1", "[::1]", "5740", "testdb1");
-      verifyUrl(drv, "jdbc:postgresql://:5740/?service=driverTestService1", "localhost", "5740", "testdb1");
-      verifyUrl(drv, "jdbc:postgresql://[::1]/?service=driverTestService1", "[::1]", "5432", "testdb1");
-      verifyUrl(drv, "jdbc:postgresql://localhost/?service=driverTestService2", "localhost", "5432", "testdb1");
-    });
-
-    // failover urls
-    verifyUrl(drv, "jdbc:postgresql://localhost,127.0.0.1:5432/test", "localhost,127.0.0.1",
-        "5432,5432", "test");
-    verifyUrl(drv, "jdbc:postgresql://localhost:5433,127.0.0.1:5432/test", "localhost,127.0.0.1",
-        "5433,5432", "test");
-    verifyUrl(drv, "jdbc:postgresql://[::1],[::1]:5432/db", "[::1],[::1]", "5432,5432", "db");
-    verifyUrl(drv, "jdbc:postgresql://[::1]:5740,127.0.0.1:5432/db", "[::1],127.0.0.1", "5740,5432",
-        "db");
-  }
-
-  @Test
-  @DisableLogger(PGPropertyUtil.class)
-  void badUrlsTest() throws Exception {
-    TestUtil.initDriver(); // Set up log levels, etc.
-
-    // Load the driver (note clients should never do it this way!)
-    Driver drv = new Driver();
-
-    // tests for service syntax
-    URL urlFileProps = getClass().getResource("/pg_service/pgservicefileProps.conf");
-    assertNotNull(urlFileProps);
-    Resources.with(
-        new SystemProperties(PGEnvironment.ORG_POSTGRESQL_PGSERVICEFILE.getName(), urlFileProps.getFile())
-    ).execute(() -> {
-=======
       verifyUrl(drv, "jdbc:yugabytedb://?service=driverTestService1", "test-host1", "5444", "testdb1");
       verifyUrl(drv, "jdbc:yugabytedb://?service=driverTestService1&host=other-host", "other-host", "5444", "testdb1");
       verifyUrl(drv, "jdbc:yugabytedb:///?service=driverTestService1", "test-host1", "5444", "testdb1");
@@ -165,9 +127,8 @@ class DriverTest {
       verifyUrl(drv, "jdbc:yugabytedb://localhost:5432/test?port=7777&dbname=other-db&service=driverTestService1", "localhost", "7777", "other-db");
       verifyUrl(drv, "jdbc:yugabytedb://[::1]:5740/?service=driverTestService1", "[::1]", "5740", "testdb1");
       verifyUrl(drv, "jdbc:yugabytedb://:5740/?service=driverTestService1", "localhost", "5740", "testdb1");
-      verifyUrl(drv, "jdbc:yugabytedb://[::1]/?service=driverTestService1", "[::1]", "5432", "testdb1");
-      verifyUrl(drv, "jdbc:yugabytedb://localhost/?service=driverTestService2", "localhost", "5432", "testdb1");
->>>>>>> cf3f9353 (Replaced the jdbc:postgresql URLs with jdbc:yugabytedb URLs)
+      verifyUrl(drv, "jdbc:yugabytedb://[::1]/?service=driverTestService1", "[::1]", "5433", "testdb1");
+      verifyUrl(drv, "jdbc:yugabytedb://localhost/?service=driverTestService2", "localhost", "5433", "testdb1");
       // fail cases
       assertFalse(drv.acceptsURL("jdbc:yugabytedb://?service=driverTestService2"));
     });
@@ -196,10 +157,10 @@ class DriverTest {
 
     // failover urls
     verifyUrl(drv, "jdbc:yugabytedb://localhost,127.0.0.1:5432/test", "localhost,127.0.0.1",
-        "5432,5432", "test");
+        "5433,5432", "test");
     verifyUrl(drv, "jdbc:yugabytedb://localhost:5433,127.0.0.1:5432/test", "localhost,127.0.0.1",
         "5433,5432", "test");
-    verifyUrl(drv, "jdbc:yugabytedb://[::1],[::1]:5432/db", "[::1],[::1]", "5432,5432", "db");
+    verifyUrl(drv, "jdbc:yugabytedb://[::1],[::1]:5432/db", "[::1],[::1]", "5433,5432", "db");
     verifyUrl(drv, "jdbc:yugabytedb://[::1]:5740,127.0.0.1:5432/db", "[::1],127.0.0.1", "5740,5432",
         "db");
   }
