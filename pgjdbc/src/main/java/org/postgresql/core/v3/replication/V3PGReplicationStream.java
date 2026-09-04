@@ -240,9 +240,9 @@ public class V3PGReplicationStream implements PGReplicationStream {
     }
     // if the client has confirmed flush of last XLogData msg and KeepAlive shows ServerLSN is still
     // advancing, we can safely advance FlushLSN to ServerLSN
-    if (automaticFlush && explicitlyFlushedLSN.compareTo(startOfLastMessageLSN) >= 0
-        && lastServerLSN.compareTo(explicitlyFlushedLSN) > 0
-        && lastServerLSN.compareTo(lastFlushedLSN) > 0) {
+    if (automaticFlush && explicitlyFlushedLSN.asLong() >= startOfLastMessageLSN.asLong()
+        && lastServerLSN.asLong() > explicitlyFlushedLSN.asLong()
+        && lastServerLSN.asLong() > lastFlushedLSN.asLong()) {
       lastFlushedLSN = lastServerLSN;
     }
 
