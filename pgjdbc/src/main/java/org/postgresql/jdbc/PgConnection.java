@@ -455,7 +455,7 @@ public class PgConnection implements BaseConnection {
     replicationConnection = PGProperty.REPLICATION.getOrDefault(info) != null;
 
     xmlFactoryFactoryClass = PGProperty.XML_FACTORY_FACTORY.getOrDefault(info);
-    cleanable = LazyCleaner.getInstance().register(leakHandle, finalizeAction);
+    cleanable = LazyCleanerImpl.getInstance().register(leakHandle, finalizeAction);
     disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestedloop.disable"));
   }
 
