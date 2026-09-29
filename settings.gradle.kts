@@ -32,7 +32,7 @@ if (JavaVersion.current() < JavaVersion.VERSION_17) {
 
 // This is the name of a current project
 // Note: it cannot be inferred from the directory name as developer might clone pgjdbc to pgjdbc_tmp (or whatever) folder
-rootProject.name = "jdbc-yugabytedb"
+rootProject.name = "pgjdbc"
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
@@ -42,7 +42,6 @@ includeBuild("build-logic")
 // include("benchmarks")
 // include("pgjdbc-osgi-test")
 include("jdbc-yugabytedb")
-include("bom")
 
 project(":jdbc-yugabytedb").projectDir = file("pgjdbc")
 
