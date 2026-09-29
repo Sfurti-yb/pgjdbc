@@ -42,6 +42,7 @@ includeBuild("build-logic")
 // include("benchmarks")
 // include("pgjdbc-osgi-test")
 include("jdbc-yugabytedb")
+include("testkit")
 
 project(":jdbc-yugabytedb").projectDir = file("pgjdbc")
 

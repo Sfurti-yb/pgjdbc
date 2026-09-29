@@ -1460,7 +1460,6 @@ public class PgDatabaseMetaData implements DatabaseMetaData {
       @Nullable String tableNamePattern, String @Nullable [] types) throws SQLException {
     String orderby;
     String useSchemas = "SCHEMAS";
-<<<<<<< HEAD
     int columns = 10;
     if (catalog != null && !catalog.equals(connection.getCatalog())) {
       Field[] f = new Field[columns];

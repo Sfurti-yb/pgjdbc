@@ -446,8 +446,6 @@ public class PgConnection implements BaseConnection {
       }
       throw e;
     }
-<<<<<<< HEAD
-=======
 
     fieldMetadataCache = new LruCache<>(
         Math.max(0, PGProperty.DATABASE_METADATA_CACHE_FIELDS.getInt(info)),
@@ -459,7 +457,6 @@ public class PgConnection implements BaseConnection {
     xmlFactoryFactoryClass = PGProperty.XML_FACTORY_FACTORY.getOrDefault(info);
     cleanable = LazyCleaner.getInstance().register(leakHandle, finalizeAction);
     disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestedloop.disable"));
->>>>>>> dcdd5419 (Update name of system property)
   }
 
   private static ReadOnlyBehavior getReadOnlyBehavior(@Nullable String property) {

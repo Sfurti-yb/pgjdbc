@@ -30,7 +30,7 @@ ide {
 
 val String.v: String get() = rootProject.extra["$this.version"] as String
 
-val buildVersion = "pgjdbc".v + releaseParams.snapshotSuffix
+val buildVersion = "pgjdbc".v + if (buildParameters.release) "" else "-SNAPSHOT"
 
 println("Building jdbc-yugabytedb $buildVersion")
 
@@ -40,7 +40,7 @@ dependencies {
     // nmcpAggregation declares the list of projects should be published to Central Portal
     // Currently we publish a single project only, however, if we add more, we need to add them here
     // as well.
-    nmcpAggregation(projects.postgresql)
+    nmcpAggregation(projects.jdbcYugabytedb)
 }
 
 jacoco {
@@ -61,26 +61,27 @@ val jacocoReport by tasks.registering(JacocoReport::class) {
     }
 }
 
-releaseParams {
-    tlp.set("yugabyte")
-    organizationName.set("yugabyte")
-    componentName.set("jdbc-yugabytedb")
-    prefixForProperties.set("gh")
-    svnDistEnabled.set(false)
-    sitePreviewEnabled.set(false)
-    releaseTag.set("REL$buildVersion")
-    nexus {
-        mavenCentral()
-    }
-    voteText.set {
-        """
-        ${it.componentName} v${it.version}-rc${it.rc} is ready for preview.
-
-        Git SHA: ${it.gitSha}
-        Staging repository: ${it.nexusRepositoryUri}
-        """.trimIndent()
-    }
-}
+// TODO: Fix releaseParams configuration for new Gradle version
+// releaseParams {
+//     tlp.set("yugabyte")
+//     organizationName.set("yugabyte")
+//     componentName.set("jdbc-yugabytedb")
+//     prefixForProperties.set("gh")
+//     svnDistEnabled.set(false)
+//     sitePreviewEnabled.set(false)
+//     releaseTag.set("REL$buildVersion")
+//     nexus {
+//         mavenCentral()
+//     }
+//     voteText.set {
+//         """
+//         ${it.componentName} v${it.version}-rc${it.rc} is ready for preview.
+//
+//         Git SHA: ${it.gitSha}
+//         Staging repository: ${it.nexusRepositoryUri}
+//         """.trimIndent()
+//     }
+// }
 
 allprojects {
     group = "com.yugabyte"
