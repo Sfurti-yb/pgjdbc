@@ -446,17 +446,6 @@ public class PgConnection implements BaseConnection {
       }
       throw e;
     }
-
-    fieldMetadataCache = new LruCache<>(
-        Math.max(0, PGProperty.DATABASE_METADATA_CACHE_FIELDS.getInt(info)),
-        Math.max(0, PGProperty.DATABASE_METADATA_CACHE_FIELDS_MIB.getInt(info) * 1024L * 1024L),
-        false);
-
-    replicationConnection = PGProperty.REPLICATION.getOrDefault(info) != null;
-
-    xmlFactoryFactoryClass = PGProperty.XML_FACTORY_FACTORY.getOrDefault(info);
-    cleanable = LazyCleanerImpl.getInstance().register(leakHandle, finalizeAction);
-    disableNestLoopForMetadataSQLs = Boolean.parseBoolean(System.getProperty("ybdb.pgdbmetadata.nestedloop.disable"));
   }
 
   private static ReadOnlyBehavior getReadOnlyBehavior(@Nullable String property) {
