@@ -14,6 +14,7 @@ import org.postgresql.util.PSQLException;
  *
  * @author Aaron Mulder (ammulder@chariotsolutions.com)
  */
+@SuppressWarnings("deprecation")
 public class SimpleDataSourceWithUrlTest extends BaseDataSourceTest {
   /**
    * Creates and configures a new SimpleDataSource.

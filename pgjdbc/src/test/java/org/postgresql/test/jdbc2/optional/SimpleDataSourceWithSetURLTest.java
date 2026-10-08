@@ -20,6 +20,7 @@ import java.util.Properties;
 /**
  * Performs the basic tests defined in the superclass. Just adds the configuration logic.
  */
+@SuppressWarnings("deprecation")
 public class SimpleDataSourceWithSetURLTest extends BaseDataSourceTest {
   /**
    * Creates and configures a new SimpleDataSource using setURL method.
