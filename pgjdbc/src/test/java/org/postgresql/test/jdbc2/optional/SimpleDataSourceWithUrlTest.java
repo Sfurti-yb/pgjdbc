@@ -21,13 +21,8 @@ public class SimpleDataSourceWithUrlTest extends BaseDataSourceTest {
   @SuppressWarnings("deprecation")
   protected void initializeDataSource() throws PSQLException {
     if (bds == null) {
-<<<<<<< HEAD
-      bds = new org.postgresql.jdbc2.optional.SimpleDataSource();
-      bds.setUrl("jdbc:postgresql://" + TestUtil.getServer() + ":" + TestUtil.getPort() + "/"
-=======
       bds = new SimpleDataSource();
       bds.setUrl("jdbc:yugabytedb://" + TestUtil.getServer() + ":" + TestUtil.getPort() + "/"
->>>>>>> fd1b298f (Replaced the jdbc:postgresql URLs with jdbc:yugabytedb URLs)
           + TestUtil.getDatabase() + "?prepareThreshold=" + TestUtil.getPrepareThreshold());
       bds.setUser(TestUtil.getUser());
       bds.setPassword(TestUtil.getPassword());

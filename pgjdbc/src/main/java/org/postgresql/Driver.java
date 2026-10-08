@@ -410,23 +410,6 @@ public class Driver implements java.sql.Driver {
     @Override
     public void run() {
       futureTask.run();
-      }
-
-      try (ResourceLock ignore = lock.obtain()) {
-        if (abandoned) {
-          if (conn != null) {
-            try {
-              conn.close();
-            } catch (SQLException e) {
-            }
-          }
-        } else {
-          result = conn;
-          resultException = error;
-          lockCondition.signal();
-        }
-      }
->>>>>>> dc96d5ee (Support load balancing of connection on multiple clusters (#26))
     }
 
     /**
