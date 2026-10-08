@@ -5,6 +5,7 @@
 
 package org.postgresql.test.jdbc2.optional;
 
+import org.postgresql.jdbc2.optional.SimpleDataSource;
 import org.postgresql.test.TestUtil;
 import org.postgresql.util.PSQLException;
 

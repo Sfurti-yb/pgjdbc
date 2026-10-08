@@ -136,7 +136,7 @@ class DriverTest {
 
   @Test
   @DisableLogger({Driver.class, PGPropertyUtil.class})
-  void rejectsBadUrls() {
+  void rejectsBadUrls() throws Exception {
     TestUtil.initDriver(); // Set up log levels, etc.
     // Load the driver (note clients should never do it this way!)
     Driver drv = new Driver();
