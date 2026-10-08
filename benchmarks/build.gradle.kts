@@ -8,7 +8,7 @@ plugins {
 }
 
 dependencies {
-    jmhImplementation(projects.postgresql) {
+    jmhImplementation(projects.pgjdbc) {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
         }

@@ -21,7 +21,7 @@ val byteBuddyAgentClasspath = configurations.resolvable("byteBuddyAgentClasspath
 }
 
 dependencies {
-    testImplementation(projects.postgresql) {
+    testImplementation(projects.pgjdbc) {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
         }

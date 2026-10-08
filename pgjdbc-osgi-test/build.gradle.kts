@@ -14,9 +14,9 @@ val pgjdbcRepository by configurations.creating {
 }
 
 dependencies {
-    pgjdbcRepository(projects.postgresql)
+    pgjdbcRepository(projects.pgjdbc)
 
-    testImplementation(projects.postgresql) {
+    testImplementation(projects.pgjdbc) {
         attributes {
             attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
         }
