@@ -46,12 +46,11 @@ if (providers.gradleProperty("jdkTestVersion").orNull?.toInt() != 8) {
     // Mockito requires Java 11+
     include("pgjdbc-mockito-test")
 }
-include("jdbc-yugabytedb")
+include("pgjdbc")
 include("testkit")
 include("pgjdbc-gss-test")
-include("bom")
 
-project(":jdbc-yugabytedb").projectDir = file("pgjdbc")
+project(":pgjdbc").projectDir = file("pgjdbc")
 
 // See https://github.com/gradle/gradle/issues/1348#issuecomment-284758705 and
 // https://github.com/gradle/gradle/issues/5321#issuecomment-387561204
