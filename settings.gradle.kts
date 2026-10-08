@@ -46,11 +46,11 @@ if (providers.gradleProperty("jdkTestVersion").orNull?.toInt() != 8) {
     // Mockito requires Java 11+
     include("pgjdbc-mockito-test")
 }
-include("pgjdbc")
+include("postgresql")
 include("testkit")
 include("pgjdbc-gss-test")
 
-project(":pgjdbc").projectDir = file("pgjdbc")
+project(":postgresql").projectDir = file("pgjdbc")
 
 // See https://github.com/gradle/gradle/issues/1348#issuecomment-284758705 and
 // https://github.com/gradle/gradle/issues/5321#issuecomment-387561204

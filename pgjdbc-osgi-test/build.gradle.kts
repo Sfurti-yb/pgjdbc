@@ -14,13 +14,9 @@ val pgjdbcRepository by configurations.creating {
 }
 
 dependencies {
-    pgjdbcRepository(projects.pgjdbc)
+    pgjdbcRepository(projects.postgresql)
 
-    testImplementation(projects.pgjdbc) {
-        attributes {
-            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
-        }
-    }
+    testImplementation(projects.postgresql)
     testImplementation(projects.testkit)
 
     testImplementation("junit:junit:4.13.2")

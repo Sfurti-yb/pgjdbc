@@ -9,11 +9,7 @@ plugins {
 }
 
 dependencies {
-    testImplementation(projects.pgjdbc) {
-        attributes {
-            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
-        }
-    }
+    testImplementation(projects.postgresql)
 }
 
 // The GSS test spawns a local Kerberos KDC and PostgreSQL server, then connects over GSSAPI.

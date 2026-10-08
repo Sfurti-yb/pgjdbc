@@ -21,11 +21,7 @@ val byteBuddyAgentClasspath = configurations.resolvable("byteBuddyAgentClasspath
 }
 
 dependencies {
-    testImplementation(projects.pgjdbc) {
-        attributes {
-            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
-        }
-    }
+    testImplementation(projects.postgresql)
     byteBuddyAgent("net.bytebuddy:byte-buddy-agent:1.18.8")
     testImplementation(projects.testkit)
     testImplementation(platform("org.mockito:mockito-bom:5.23.0"))

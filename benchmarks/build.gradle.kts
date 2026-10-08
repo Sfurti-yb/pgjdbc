@@ -8,11 +8,7 @@ plugins {
 }
 
 dependencies {
-    jmhImplementation(projects.pgjdbc) {
-        attributes {
-            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
-        }
-    }
+    jmhImplementation(projects.postgresql)
     jmhImplementation(projects.testkit)
     jmhImplementation("org.roaringbitmap:RoaringBitmap:1.6.14")
     jmhImplementation("it.unimi.dsi:fastutil:8.5.18")

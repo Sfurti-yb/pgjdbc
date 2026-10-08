@@ -9,11 +9,7 @@ dependencies {
         }
     }
 
-    testImplementation(projects.pgjdbc) {
-        attributes {
-            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.SHADOWED))
-        }
-    }
+    testImplementation(projects.postgresql)
     testImplementation(projects.testkit)
 
     testImplementation("junit:junit:4.13.2")
