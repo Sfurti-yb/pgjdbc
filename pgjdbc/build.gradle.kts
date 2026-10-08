@@ -143,6 +143,9 @@ dependencies {
     testKitSourcesWithoutAnnotations(projects.testkit)
 
     testImplementation(projects.testkit)
+    // Mockito is needed for YugabyteDB-specific tests
+    testImplementation(platform("org.mockito:mockito-bom:5.23.0"))
+    testImplementation("org.mockito:mockito-core")
 }
 
 val skipReplicationTests by props()
