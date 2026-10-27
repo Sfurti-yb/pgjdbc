@@ -5,14 +5,14 @@
 
 package org.postgresql.test.jdbc2.optional;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.postgresql.Driver.parseURL;
 
 import org.postgresql.PGProperty;
-import org.postgresql.jdbc2.optional.SimpleDataSource;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.test.TestUtil;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
 
@@ -21,12 +21,12 @@ import java.util.Properties;
  */
 public class SimpleDataSourceWithSetURLTest extends BaseDataSourceTest {
   /**
-   * Creates and configures a new SimpleDataSource using setURL method.
+   * Creates and configures a new PGSimpleDataSource using setURL method.
    */
   @Override
-  protected void initializeDataSource() {
+  protected void initializeDataSource() throws org.postgresql.util.PSQLException {
     if (bds == null) {
-      bds = new SimpleDataSource();
+      bds = new PGSimpleDataSource();
       bds.setURL(String.format("jdbc:yugabytedb://%s:%d/%s?prepareThreshold=%d", TestUtil.getServer(), TestUtil.getPort(), TestUtil.getDatabase(), TestUtil.getPrepareThreshold()));
       bds.setUser(TestUtil.getUser());
       bds.setPassword(TestUtil.getPassword());
@@ -51,8 +51,8 @@ public class SimpleDataSourceWithSetURLTest extends BaseDataSourceTest {
   public void testSetURL() throws Exception {
     initializeDataSource();
 
-    assertEquals(TestUtil.getServer(), bds.getServerName());
-    assertEquals(TestUtil.getPort(), bds.getPortNumber());
+    assertEquals(TestUtil.getServer(), bds.getServerNames()[0]);
+    assertEquals(TestUtil.getPort(), bds.getPortNumbers()[0]);
     assertEquals(TestUtil.getDatabase(), bds.getDatabaseName());
     assertEquals(TestUtil.getPrepareThreshold(), bds.getPrepareThreshold());
   }

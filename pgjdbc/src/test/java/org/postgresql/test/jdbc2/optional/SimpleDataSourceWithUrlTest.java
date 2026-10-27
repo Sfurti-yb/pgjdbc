@@ -5,7 +5,7 @@
 
 package org.postgresql.test.jdbc2.optional;
 
-import org.postgresql.jdbc2.optional.SimpleDataSource;
+import org.postgresql.ds.PGSimpleDataSource;
 import org.postgresql.test.TestUtil;
 
 /**
@@ -15,12 +15,12 @@ import org.postgresql.test.TestUtil;
  */
 public class SimpleDataSourceWithUrlTest extends BaseDataSourceTest {
   /**
-   * Creates and configures a new SimpleDataSource.
+   * Creates and configures a new PGSimpleDataSource.
    */
   @Override
-  protected void initializeDataSource() {
+  protected void initializeDataSource() throws org.postgresql.util.PSQLException {
     if (bds == null) {
-      bds = new SimpleDataSource();
+      bds = new PGSimpleDataSource();
       bds.setUrl("jdbc:yugabytedb://" + TestUtil.getServer() + ":" + TestUtil.getPort() + "/"
           + TestUtil.getDatabase() + "?prepareThreshold=" + TestUtil.getPrepareThreshold());
       bds.setUser(TestUtil.getUser());

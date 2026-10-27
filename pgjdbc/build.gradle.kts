@@ -143,6 +143,7 @@ dependencies {
     testKitSourcesWithoutAnnotations(projects.testkit)
 
     testImplementation(projects.testkit)
+    testImplementation("org.mockito:mockito-core:5.15.2")
 }
 
 val skipReplicationTests by props()

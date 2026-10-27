@@ -1,5 +1,5 @@
 {
-  "build": ["./gradlew", "build", "-x", "test", "--no-daemon"],
-  "tests": ["./gradlew", "test", "--no-daemon"],
-  "yb_tests": ["./gradlew", "test", "--tests", "*yugabyte*", "--no-daemon"]
+  "build": ["./gradlew", ":postgresql:assemble", "--no-daemon"],
+  "tests": ["./gradlew", ":postgresql:test", "--no-daemon"],
+  "yb_tests": ["./gradlew", ":postgresql:test", "--tests", "*yugabyte*", "--no-daemon"]
 }
