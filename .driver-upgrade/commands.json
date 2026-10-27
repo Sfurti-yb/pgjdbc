@@ -1,0 +1,5 @@
+{
+  "build": ["./gradlew", "build", "-x", "test", "--no-daemon"],
+  "tests": ["./gradlew", "test", "--no-daemon"],
+  "yb_tests": ["./gradlew", "test", "--tests", "*yugabyte*", "--no-daemon"]
+}

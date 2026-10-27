@@ -248,6 +248,7 @@ public class PgConnection implements BaseConnection {
 
   private LoadBalancer loadBalancer;
   private boolean disableNestLoopForMetadataSQLs;
+  private String ybPgDatabaseMetaDataHintString;
 
   private final @Nullable String xmlFactoryFactoryClass;
   private @Nullable PGXmlFactoryFactory xmlFactoryFactory;
@@ -946,6 +947,10 @@ public class PgConnection implements BaseConnection {
 
   public boolean getDisableNestLoopForMetadataSQLs() {
     return disableNestLoopForMetadataSQLs;
+  }
+
+  public String getYbPgDatabaseMetaDataHintString() {
+    return ybPgDatabaseMetaDataHintString;
   }
 
   @Override

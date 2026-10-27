@@ -11,7 +11,7 @@ stored; only new lines are kept.
 
 ## Learned this run
 
-- Rebase REL42.7.3 -> REL42.7.13: First commit (fork-point) had 54 commits to replay
+- Rebase REL42.7.3 -> REL42.7.13: 54 commits to replay onto target
 - Upstream deleted test-anorm-sbt/ and test-gss/ modules entirely - accept deletions
 - Upstream deleted benchmarks/src/jmh/java/org/postgresql/util/ConnectionUtil.java - functionality moved to TestUtil
 - build.properties: upstream renamed `server/port/database` to `test.url.PGHOST/PGPORT/PGDBNAME`
@@ -20,3 +20,5 @@ stored; only new lines are kept.
 - Version bumps (e.g., "Bump the version to X-yb-N") should not be replayed - version set at end
 - Group ID: Always `com.yugabyte`, Artifact ID: `jdbc-yugabytedb`
 - When upstream refactored to StringBuilder in PgDatabaseMetaData, adapt our hint additions to use StringBuilder too
+- Build system: Gradle with ./gradlew wrapper
+- After rebase: check for leftover conflict markers in .kts files (they cause build failures)

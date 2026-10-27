@@ -61,7 +61,7 @@ public class YBClusterAwareDataSource extends PGSimpleDataSource {
    * @see PGProperty#YB_TOPOLOGY_KEYS
    */
   public String getTopologyKeys() {
-    return PGProperty.YB_TOPOLOGY_KEYS.get(properties);
+    return PGProperty.YB_TOPOLOGY_KEYS.getOrDefault(properties);
   }
 
   /**
