@@ -1188,7 +1188,6 @@ Server SQLState: 25001)
 23:15:33.934 (1)  <=BE CommandStatus(DROP TABLE)
 23:15:33.934 (1)  <=BE ReadyForQuery(I)
 23:15:33.934 (1)  FE=> Terminate
-<<<<<<< HEAD
      */
   }
 
